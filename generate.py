@@ -25,14 +25,14 @@ def _is_chinese_char(char):
     # like the all of the other languages.
     cp = ord(char)
     if (
-        (cp >= 0x4E00 and cp <= 0x9FFF)
-        or (cp >= 0x3400 and cp <= 0x4DBF)  #
-        or (cp >= 0x20000 and cp <= 0x2A6DF)  #
-        or (cp >= 0x2A700 and cp <= 0x2B73F)  #
-        or (cp >= 0x2B740 and cp <= 0x2B81F)  #
-        or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
-        or (cp >= 0xF900 and cp <= 0xFAFF)
-        or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
+            (cp >= 0x4E00 and cp <= 0x9FFF)
+            or (cp >= 0x3400 and cp <= 0x4DBF)  #
+            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
+            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
+            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
+            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
+            or (cp >= 0xF900 and cp <= 0xFAFF)
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
     ):  #
         return True
 
@@ -49,7 +49,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float("Inf")
     From: https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
     """
     assert (
-        logits.dim() == 1
+            logits.dim() == 1
     )  # batch size 1 for now - could be updated for more but the code would be less clear
     top_k = min(top_k, logits.size(-1))  # Safety check
     if top_k > 0:
@@ -73,23 +73,23 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float("Inf")
 
 
 def sample_sequence(
-    model,
-    context,
-    length,
-    n_ctx,
-    tokenizer,
-    temperature=1.0,
-    top_k=30,
-    top_p=0.0,
-    repitition_penalty=1.0,
-    device="cpu",
+        model,
+        context,
+        length,
+        n_ctx,
+        tokenizer,
+        temperature=1.0,
+        top_k=30,
+        top_p=0.0,
+        repitition_penalty=1.0,
+        device="cpu",
 ):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0)
     generated = context
     with torch.no_grad():
         for _ in trange(length):
-            inputs = {"input_ids": generated[0][-(n_ctx - 1) :].unsqueeze(0)}
+            inputs = {"input_ids": generated[0][-(n_ctx - 1):].unsqueeze(0)}
             outputs = model(
                 **inputs
             )  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
@@ -109,7 +109,7 @@ def sample_sequence(
 
 
 def fast_sample_sequence(
-    model, context, length, temperature=1.0, top_k=30, top_p=0.0, device="cpu"
+        model, context, length, temperature=1.0, top_k=30, top_p=0.0, device="cpu"
 ):
     inputs = torch.LongTensor(context).view(1, -1).to(device)
     if len(context) > 1:
@@ -171,6 +171,13 @@ def main():
         help="模型路径",
     )
     parser.add_argument(
+        "--pretrained_model_folder",
+        default="./pretrained_model",
+        type=str,
+        required=False,
+        help="预训练模型路径",
+    )
+    parser.add_argument(
         "--prefix", default="我", type=str, required=False, help="生成文章的开头"
     )
     parser.add_argument("--no_wordpiece", action="store_true", help="不做word piece切词")
@@ -198,15 +205,17 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = BertTokenizer(vocab_file=args.tokenizer_path)
-    model_config = GPT2Config.from_json_file(args.model_config)
-    model = GPT2LMHeadModel(config=model_config)
-    state_dict = {
-        key[6:]: value
-        for key, value in torch.load(args.model_path, map_location="cpu")[
-            "state_dict"
-        ].items()
-    }
-    model.load_state_dict(state_dict)
+    # model_config = GPT2Config.from_json_file(args.model_config)
+    model = GPT2LMHeadModel.from_pretrained(args.pretrained_model_folder, local_files_only=True)
+    # model = GPT2LMHeadModel(config=model_config)
+
+    # state_dict = {
+    #     key[6:]: value
+    #     for key, value in torch.load(args.model_path, map_location="cpu")[
+    #         "state_dict"
+    #     ].items()
+    # }
+    # model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
 
